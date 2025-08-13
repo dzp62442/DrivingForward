@@ -35,12 +35,12 @@ we include only the depth network and the Gaussian network, as shown in the lowe
 To get started, clone this project, create a conda virtual environment using Python 3.8, and install the requirements:
 
 ```bash
-git clone https://github.com/fangzhou2000/DrivingForward
-git submodule update --init --recursive
+git clone git@github.com:dzp62442/DrivingForward.git
 cd DrivingForward
+git submodule update --init --recursive
 conda create -n DrivingForward python=3.8
 conda activate DrivingForward
-pip install torch==1.12.0 torchvision==0.13.0 torchaudio==0.12.0 --index-url https://download.pytorch.org/whl/cu113
+pip install numpy==1.24.4 torch==2.0.0 torchvision==0.15.1 torchaudio==2.0.1 --index-url https://download.pytorch.org/whl/cu118
 pip install -r requirements.txt
 cd models/gaussian/gaussian-splatting
 pip install submodules/diff-gaussian-rasterization

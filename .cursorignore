@@ -10,3 +10,8 @@ weights_SF
 weights_MF
 *.pyc
 input_data/
+
+# submodules
+dgp/
+packnet_sfm/
+gaussian-splatting/
