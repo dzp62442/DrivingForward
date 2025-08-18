@@ -1,0 +1,7 @@
+{
+    "search.exclude": {
+      "**/external": true,
+      "**/input_data": true,
+      "**/models/gaussian/gaussian-splatting": true,
+    }
+  }
