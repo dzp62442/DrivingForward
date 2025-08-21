@@ -3,5 +3,13 @@
       "**/external": true,
       "**/input_data": true,
       "**/models/gaussian/gaussian-splatting": true,
-    }
+    },
+    "files.watcherExclude": {
+        "**/.git": true,
+        "**/input_data": true,
+    },
+    "cursorpyright.analysis.exclude": [
+        "**/.git",
+        "**/input_data",
+    ]
   }
