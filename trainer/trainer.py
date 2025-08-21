@@ -55,8 +55,17 @@ class DrivingForwardTrainer:
             self.val_iter = iter(val_dataloader)
         
         self.step = 0
+        self.start_epoch = 0
+        
+        # load model
+        if model.load_weights_dir is not None:  # 断点续训
+            model.load_weights()
+            self.start_epoch = int(model.load_weights_dir.split('_')[-1])  # 已完成训练的 epoch 数
+            self.start_epoch = self.start_epoch + 1  # 从下一个 epoch 开始训练
+            self.step = self.start_epoch * len(train_dataloader)  # 已完成训练的 step 数
+        
         start_time = time.time()
-        for self.epoch in range(self.num_epochs):
+        for self.epoch in range(self.start_epoch, self.num_epochs):
                 
             self.train(model, train_dataloader, start_time)
             

@@ -71,26 +71,28 @@ Data should be as follows:
 Get the [pretrained models](https://drive.google.com/drive/folders/1IASOPK1RQeP-nLQvJUn7WQUtb_fwGlVS), save them to the root directory of the project, and unzip them.
 
 For SF mode, run the following:
-```
+```shell
 python -W ignore eval.py --weight_path ./weights_SF --novel_view_mode SF
 ```
 
 
 For MF mode, run the following:
-```
+```shell
 python -W ignore eval.py --weight_path ./weights_MF --novel_view_mode MF
 ```
 
 ### Training
 
 For SF mode, run the following:
-```
+```shell
 python -W ignore train.py --novel_view_mode SF
+python -W ignore train.py --novel_view_mode SF --weight_path ./results/main/models/weights_n/  # 断点续训
 ```
 
 For MF mode, run the following:
-```
+```shell
 python -W ignore train.py --novel_view_mode MF
+python -W ignore train.py --novel_view_mode MF --weight_path ./results/main/models/weights_n/  # 断点续训
 ```
 
 ## BibTeX

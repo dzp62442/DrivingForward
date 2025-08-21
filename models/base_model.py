@@ -58,6 +58,11 @@ class BaseModel:
         # save optimizer
         optim_file_path = os.path.join(curr_model_weights_dir, f'{_OPTIMIZER_NAME}.pth')
         torch.save(self.optimizer.state_dict(), optim_file_path)
+        
+        # save learning rate scheduler
+        if hasattr(self, 'lr_scheduler') and self.lr_scheduler is not None:
+            scheduler_file_path = os.path.join(curr_model_weights_dir, 'lr_scheduler.pth')
+            torch.save(self.lr_scheduler.state_dict(), scheduler_file_path)
 
     def load_weights(self):
         assert os.path.isdir(self.load_weights_dir), f'\tCannot find {self.load_weights_dir}'
@@ -95,3 +100,18 @@ class BaseModel:
                     print(f'\tCannnot load {_OPTIMIZER_NAME} - the optimizer will be randomly initialized')
             else:
                 print(f'\tCannot find {_OPTIMIZER_NAME} weights, so the optimizer will be randomly initialized')
+                
+            # loading learning rate scheduler state
+            if hasattr(self, 'lr_scheduler') and self.lr_scheduler is not None:
+                scheduler_file_path = os.path.join(self.load_weights_dir, 'lr_scheduler.pth')
+                if os.path.isfile(scheduler_file_path):
+                    try:
+                        print('Loading learning rate scheduler weights')
+                        scheduler_dict = torch.load(scheduler_file_path)
+                        self.lr_scheduler.load_state_dict(scheduler_dict)
+                        print(f'\tLearning rate scheduler state loaded from {scheduler_file_path}')
+                    except Exception as e:
+                        print(f'\tCannot load learning rate scheduler - {e}')
+                        print('\tThe scheduler will continue with its current state')
+                else:
+                    print('\tCannot find learning rate scheduler weights, scheduler will continue with current state')

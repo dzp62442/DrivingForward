@@ -36,8 +36,8 @@ data:
 
 training:
   # basic
-  height: 352
-  width: 640
+  height: 112
+  width: 200
   scales: [0] 
   frame_ids: [0, -1, 1]
   
@@ -85,7 +85,7 @@ eval:
   
 load:
   pretrain: False
-  models_to_load: ['depth_net', 'gs_net']
+  models_to_load: ['depth_net', 'gs_net', 'pose_net']
   load_dir: path to weights directory
   
 logging:
