@@ -353,6 +353,11 @@ class DrivingForwardTrainer:
                     self.save_image(rgb_gt, Path(self.save_path) / inputs['token'][0] / f"{cam}_gt.png")
                     self.save_image(inputs[('color', -1, 0)][:, cam, ...], Path(self.save_path) / inputs['token'][0] / f"{cam}_prev_gt.png")
                     self.save_image(inputs[('color', 1, 0)][:, cam, ...], Path(self.save_path) / inputs['token'][0] / f"{cam}_next_gt.png")
+        
+        if self.save_plys:
+            assert self.eval_batch_size == 1
+            self.save_ply(outputs, Path(self.save_path) / inputs['token'][0] / "driving_forward.ply")
+        
         psnr /= self.num_cams
         ssim /= self.num_cams
         lpips /= self.num_cams
