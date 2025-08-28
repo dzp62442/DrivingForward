@@ -81,6 +81,7 @@ eval:
   eval_max_depth: 80
   eval_visualize: True
   save_images: True
+  save_plys: True
   save_path: './results/images'
   
 load:

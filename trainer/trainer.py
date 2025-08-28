@@ -197,6 +197,112 @@ class DrivingForwardTrainer:
         # Save the image.
         Image.fromarray(self.prep_image(image)).save(path)
 
+    def save_ply(self, outputs, path, compatible=True):
+        # compatible: save pre-activated gaussians as in the original paper
+
+        # 从 outputs 中提取高斯
+        for i in range(self.eval_batch_size):
+            xyz_i_valid = []
+            # rgb_i_valid = []
+            rot_i_valid = []
+            scale_i_valid = []
+            opacity_i_valid = []
+            sh_i_valid = []
+            if self.novel_view_mode == 'SF':
+                for frame_id in [0]:
+                    for cam in range(self.num_cams):
+                        valid_i = outputs[('cam', cam)][('pts_valid', frame_id, 0)][i, :]
+                        xyz_i = outputs[('cam', cam)][('xyz', frame_id, 0)][i, :, :]
+                        # rgb_i = inputs[('color', frame_id, 0)][:, cam, ...][i, :, :, :].permute(1, 2, 0).view(-1, 3) # HWC
+                        
+                        rot_i = outputs[('cam', cam)][('rot_maps', frame_id, 0)][i, :, :, :].permute(1, 2, 0).view(-1, 4)
+                        scale_i = outputs[('cam', cam)][('scale_maps', frame_id, 0)][i, :, :, :].permute(1, 2, 0).view(-1, 3)
+                        opacity_i = outputs[('cam', cam)][('opacity_maps', frame_id, 0)][i, :, :, :].permute(1, 2, 0).view(-1, 1)
+                        sh_i = rearrange(outputs[('cam', cam)][('sh_maps', frame_id, 0)][i, :, :, :], "p srf r xyz d_sh -> (p srf r) d_sh xyz").contiguous()
+
+                        xyz_i_valid.append(xyz_i[valid_i].view(-1, 3))
+                        # rgb_i_valid.append(rgb_i[valid_i].view(-1, 3))
+                        rot_i_valid.append(rot_i[valid_i].view(-1, 4))
+                        scale_i_valid.append(scale_i[valid_i].view(-1, 3))
+                        opacity_i_valid.append(opacity_i[valid_i].view(-1, 1))
+                        sh_i_valid.append(sh_i[valid_i])
+
+            elif self.novel_view_mode == 'MF':
+                for frame_id in [-1, 1]:
+                    for cam in range(self.num_cams):
+                        valid_i = outputs[('cam', cam)][('pts_valid', frame_id, 0)][i, :]
+                        xyz_i = outputs[('cam', cam)][('xyz', frame_id, 0)][i, :, :]
+                        # rgb_i = inputs[('color', frame_id, 0)][:, cam, ...][i, :, :, :].permute(1, 2, 0).view(-1, 3) # HWC
+                            
+                        rot_i = outputs[('cam', cam)][('rot_maps', frame_id, 0)][i, :, :, :].permute(1, 2, 0).view(-1, 4)
+                        scale_i = outputs[('cam', cam)][('scale_maps', frame_id, 0)][i, :, :, :].permute(1, 2, 0).view(-1, 3)
+                        opacity_i = outputs[('cam', cam)][('opacity_maps', frame_id, 0)][i, :, :, :].permute(1, 2, 0).view(-1, 1)
+                        sh_i = rearrange(outputs[('cam', cam)][('sh_maps', frame_id, 0)][i, :, :, :], "p srf r xyz d_sh -> (p srf r) d_sh xyz").contiguous()
+
+                        xyz_i_valid.append(xyz_i[valid_i].view(-1, 3))
+                        # rgb_i_valid.append(rgb_i[valid_i].view(-1, 3))
+                        rot_i_valid.append(rot_i[valid_i].view(-1, 4))
+                        scale_i_valid.append(scale_i[valid_i].view(-1, 3))
+                        opacity_i_valid.append(opacity_i[valid_i].view(-1, 1))
+                        sh_i_valid.append(sh_i[valid_i])
+
+            pts_xyz_i = torch.concat(xyz_i_valid, dim=0)
+            # pts_rgb_i = torch.concat(rgb_i_valid, dim=0)
+            # pts_rgb_i = pts_rgb_i * 0.5 + 0.5
+            rot_i = torch.concat(rot_i_valid, dim=0)
+            scale_i = torch.concat(scale_i_valid, dim=0)
+            opacity_i = torch.concat(opacity_i_valid, dim=0)
+            sh_i = torch.concat(sh_i_valid, dim=0)
+
+        from plyfile import PlyData, PlyElement
+     
+        means3D = pts_xyz_i.contiguous().float()
+        opacity = opacity_i.contiguous().float()
+        scales = scale_i.contiguous().float()
+        rotations = rot_i.contiguous().float()
+        shs = sh_i.unsqueeze(1).contiguous().float() # [N, 1, 3]
+
+        # prune by opacity
+        mask = opacity.squeeze(-1) >= 0.005
+        means3D = means3D[mask]
+        opacity = opacity[mask]
+        scales = scales[mask]
+        rotations = rotations[mask]
+        shs = shs[mask]
+
+        # invert activation to make it compatible with the original ply format
+        if compatible:
+            def inverse_sigmoid(x):
+                return torch.log(x/(1-x))
+            opacity = inverse_sigmoid(opacity)
+            scales = torch.log(scales + 1e-8)
+            shs = (shs - 0.5) / 0.28209479177387814
+
+        xyzs = means3D.detach().cpu().numpy()
+        f_dc = shs.detach().transpose(1, 2).flatten(start_dim=1).contiguous().cpu().numpy()
+        opacities = opacity.detach().cpu().numpy()
+        scales = scales.detach().cpu().numpy()
+        rotations = rotations.detach().cpu().numpy()
+
+        l = ['x', 'y', 'z']
+        # All channels except the 3 DC
+        for i in range(f_dc.shape[1]):
+            l.append('f_dc_{}'.format(i))
+        l.append('opacity')
+        for i in range(scales.shape[1]):
+            l.append('scale_{}'.format(i))
+        for i in range(rotations.shape[1]):
+            l.append('rot_{}'.format(i))
+
+        dtype_full = [(attribute, 'f4') for attribute in l]
+
+        elements = np.empty(xyzs.shape[0], dtype=dtype_full)
+        attributes = np.concatenate((xyzs, f_dc, opacities, scales, rotations), axis=1)
+        elements[:] = list(map(tuple, attributes))
+        el = PlyElement.describe(elements, 'vertex')
+
+        PlyData([el]).write(path)
+
 
     def prep_image(self, image: FloatImage) -> UInt8[np.ndarray, "height width channel"]:
         # Handle batched images.
