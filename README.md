@@ -49,6 +49,8 @@ cd ../../..
 
 ## Datasets
 
+> 训练/推理过程中均需要加载尺度深度图，见 dataset/nuscenes_dataset.py 中的 generate_depth_map 函数
+
 ### nuScenes 
 * Download [nuScenes](https://www.nuscenes.org/nuscenes) official dataset
 * Place the dataset in `input_data/nuscenes/`
@@ -65,6 +67,9 @@ Data should be as follows:
 ```
 
 ## Running the Code
+
+> 作者发布的预训练权重是在 352x640 的分辨率下训练的
+> 在 4090 主机上使用 112x200 的分辨率重新训练，取得了与论文中报告指标基本一致的结果
 
 ### Evaluation
 

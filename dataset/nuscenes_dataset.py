@@ -136,7 +136,7 @@ class NuScenesdataset(Dataset):
         bwd_context, fwd_context = [], []
         if self.bwd != 0:
             if self.split == 'eval_SF': # validation
-                bwd_sample = cam_sample
+                bwd_sample = cam_sample  # SF 模式下，没有加载后一帧，而是用当前帧代替
             else:
                 bwd_sample = self.dataset.get('sample_data', cam_sample['prev'])
             bwd_context = [self.get_current(key, bwd_sample)]
@@ -365,7 +365,7 @@ class NuScenesdataset(Dataset):
     
     def __getitem__(self, idx):
         # get nuscenes dataset sample
-        frame_idx = self.filenames[idx].strip().split()[0]
+        frame_idx = self.filenames[idx].strip().split()[0]  # sample token
         sample_nusc = self.dataset.get('sample', frame_idx)
         
         sample = []
@@ -393,22 +393,22 @@ class NuScenesdataset(Dataset):
             # if depth is returned            
             if self.with_depth:
                 data.update({
-                    'depth': self.generate_depth_map(sample_nusc, cam, cam_sample)
+                    'depth': self.generate_depth_map(sample_nusc, cam, cam_sample)  # 尺度深度
                 })
             # if pose is returned
             if self.with_pose:
                 data.update({
-                    'extrinsics':self.get_current('extrinsics', cam_sample)
+                    'extrinsics':self.get_current('extrinsics', cam_sample)  # cam to ego
                 })
             # if ego_pose is returned
             if self.with_ego_pose:
                 data.update({
-                    'ego_pose': self.get_cam_T_cam(cam_sample)
+                    'ego_pose': self.get_cam_T_cam(cam_sample)  # [cam_T_cam_bwd, cam_T_cam_fwd]，当前相机到过去/未来相机的变换
                 })
             # if mask is returned
             if self.with_mask:
                 data.update({
-                    'mask': self.mask_loader(self.mask_path, '', cam)
+                    'mask': self.mask_loader(self.mask_path, '', cam)  # 自车掩码
                 })        
             # if context is returned
             if self.has_context:
