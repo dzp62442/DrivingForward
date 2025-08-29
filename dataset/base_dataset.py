@@ -46,6 +46,21 @@ def construct_dataset(cfg, mode, **kwargs):
             cfg['data']['data_path'], split,
             **dataset_args            
         )
+    elif cfg['data']['dataset'] == 'omniscene':
+        from dataset.omniscene_dataset import OmnisceneDataset
+        if mode == 'train':
+            split =  'train'
+        else:
+            if cfg['model']['novel_view_mode'] == 'MF':
+                split = 'eval_MF'
+            elif cfg['model']['novel_view_mode'] == 'SF':
+                split = 'eval_SF'
+            else:
+                raise ValueError('Unknown novel view mode: ' + cfg['model']['novel_view_mode'])
+        dataset = OmnisceneDataset(
+            cfg['data']['data_path'], split,
+            **dataset_args            
+        )
     else:
         raise ValueError('Unknown dataset: ' + cfg['data']['dataset'])
     return dataset
