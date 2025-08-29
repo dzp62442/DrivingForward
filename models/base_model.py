@@ -46,8 +46,8 @@ class BaseModel:
         for m in self.models.values():
             m.eval()
 
-    def save_model(self, epoch):
-        curr_model_weights_dir = os.path.join(self.save_weights_root, f'weights_{epoch}')
+    def save_model(self, epoch, step):
+        curr_model_weights_dir = os.path.join(self.save_weights_root, f'weights_{epoch}_{step}')
         os.makedirs(curr_model_weights_dir, exist_ok=True)
 
         for model_name, model in self.models.items():

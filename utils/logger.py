@@ -124,7 +124,7 @@ class Logger:
         duration = time.time() - before_op_time
 
         if self.is_checkpoint(step):
-            self.log_time(epoch, batch_idx * world_size, duration, losses, start_time)
+            self.log_time(epoch, step, batch_idx * world_size, duration, losses, start_time)
             self.log_tb(mode, inputs, outputs, losses, step)
                 
     def is_checkpoint(self, step):
@@ -135,7 +135,7 @@ class Logger:
         late_phase = step % self.late_log_frequency == 0
         return (early_phase or late_phase)
 
-    def log_time(self, epoch, batch_idx, duration, loss, start_time):
+    def log_time(self, epoch, step, batch_idx, duration, loss, start_time):
         """
         This function prints epoch, iteration, duration, loss and spent time.
         """
@@ -143,7 +143,7 @@ class Logger:
         samples_per_sec = self.batch_size / duration
         time_sofar = time.time() - start_time
         print("")
-        print(f'epoch: {epoch:2d} | batch: {batch_idx:6d} |' + \
+        print(f'epoch: {epoch:2d} | global iter: {step:6d} | batch: {batch_idx:6d} |' + \
               f'examples/s: {samples_per_sec:5.1f} | loss: {rep_loss:.3f} | time elapsed: {pretty_ts(time_sofar)}')
         
     def log_tb(self, mode, inputs, outputs, losses, step):

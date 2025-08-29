@@ -56,24 +56,33 @@ class DrivingForwardTrainer:
         
         self.step = 0
         self.start_epoch = 0
+
+        assert self.train_target in ['epoch', 'global_iter'], f'train_target {self.train_target} should be one of [epoch, global_iter]'
         
         # load model
         if model.load_weights_dir is not None:  # 断点续训
             model.load_weights()
-            self.start_epoch = int(model.load_weights_dir.split('_')[-1])  # 已完成训练的 epoch 数
-            self.start_epoch = self.start_epoch + 1  # 从下一个 epoch 开始训练
-            self.step = self.start_epoch * len(train_dataloader)  # 已完成训练的 step 数
+            if self.train_target == 'epoch':  # 以达成若干轮数为训练目标
+                self.start_epoch = int(model.load_weights_dir.split('_')[-2])  # 已完成训练的 epoch 数
+                self.start_epoch = self.start_epoch + 1  # 从下一个 epoch 开始训练
+                self.step = self.start_epoch * len(train_dataloader)  # 已完成训练的 step 数
+            elif self.train_target == 'global_iter':  # 以达成若干迭代次数为训练目标
+                self.step = int(model.load_weights_dir.split('_')[-1])  # 已完成训练的 step 数
         
         start_time = time.time()
         for self.epoch in range(self.start_epoch, self.num_epochs):
                 
-            self.train(model, train_dataloader, start_time)
+            self.train(model, train_dataloader, start_time)  # 训练一轮 epoch
             
-            # save model after each epoch using rank 0 gpu 
-            if self.rank == 0:
-                model.save_model(self.epoch)
-                print('-'*110) 
-                
+            # 若以达成若干轮数为训练目标，每结束一轮 epoch 保存一次
+            if self.train_target == 'epoch' and self.rank == 0:
+                model.save_model(self.epoch, self.step)
+                print(f'Save model at epoch {self.epoch} at step {self.step} !')
+
+            # 若以达成若干迭代次数为训练目标，达成后直接退出
+            if self.train_target == 'global_iter' and self.step > self.num_global_iters:
+                break
+
             if self.ddp_enable:
                 dist.barrier()
                 
@@ -94,19 +103,13 @@ class DrivingForwardTrainer:
             model.optimizer.step()
 
             if self.rank == 0: 
-                self.logger.update(
-                    'train', 
-                    self.epoch, 
-                    self.world_size,
-                    batch_idx, 
-                    self.step,
-                    start_time,
-                    before_op_time, 
-                    inputs,
-                    outputs,
-                    losses
-                )
+                self.logger.update('train', self.epoch, self.world_size, batch_idx, self.step, start_time, before_op_time, inputs, outputs, losses)
 
+                # 若以达成若干迭代次数为训练目标，每 10k 次迭代保存一次模型
+                if self.train_target == 'global_iter' and self.step % 10000 == 0:
+                    model.save_model(self.epoch, self.step)
+                    print(f'Save model at epoch {self.epoch} at step {self.step} !')
+                
                 if self.logger.is_checkpoint(self.step):
                     self.validate(model)
 
@@ -138,9 +141,10 @@ class DrivingForwardTrainer:
         avg_reconstruction_metric['ssim'] += ssim
         avg_reconstruction_metric['lpips'] += lpips
 
-        print('Validation reconstruction result...\n')
-        print(f"\n{inputs['token'][0]}")
+        print('Validation reconstruction result...')
+        print(f"{inputs['token'][0]}")
         self.logger.print_perf(avg_reconstruction_metric, 'reconstruction')
+        print('')
 
         # Set the model back to training mode
         model.set_train()
