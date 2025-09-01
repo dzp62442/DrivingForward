@@ -367,7 +367,6 @@ class DrivingForwardTrainer:
                     elif self.novel_view_mode == 'OS':
                         self.save_image(image, Path(self.save_path) / inputs['token'][0] / f"{cam}_{frame_id}.png")
                         self.save_image(rgb_gt, Path(self.save_path) / inputs['token'][0] / f"{cam}_{frame_id}_gt.png")
-                        self.save_image(inputs[('color', 0, 0)][:, cam, ...], Path(self.save_path) / inputs['token'][0] / f"{cam}_{frame_id}_0_gt.png")
         
         if self.save_plys:
             assert self.eval_batch_size == 1

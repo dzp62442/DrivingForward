@@ -426,5 +426,9 @@ class NuScenesdataset(Dataset):
         # stack and align dataset for our trainer
         sample = stack_sample(sample)
         sample = align_dataset(sample, self.scales, contexts)
+
+        # 添加 ('cam_T_cam', 0, 0) 到 sample，以使用当前时刻图像进行监督和评估
+        sample[('cam_T_cam', 0, 0)] = np.expand_dims(np.eye(4), 0).repeat(self.num_cameras, axis=0)
+        
         return sample
                 
