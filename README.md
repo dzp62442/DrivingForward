@@ -1,3 +1,18 @@
+在 OmniScene 数据集上与 SVF-GS 进行对比
+
+* 训练
+```shell
+python -W ignore train.py --config_file ./configs/nuscenes/comp_svfgs.yaml --novel_view_mode SF
+python -W ignore train.py --config_file ./configs/nuscenes/comp_svfgs.yaml --novel_view_mode SF --weight_path ./results/main/models/weights_0_n  # 断点续训
+```
+
+* 推理
+```shell
+python -W ignore eval.py --config_file ./configs/nuscenes/comp_svfgs.yaml --weight_path ./results/main/models/weights_0_100000 --novel_view_mode SF
+```
+
+------
+
 <p align="center">
   <h1 align="center">DrivingForward: Feed-forward 3D Gaussian Splatting for Driving Scene Reconstruction from Flexible Surround-view Input</h1>
   <p align="center">

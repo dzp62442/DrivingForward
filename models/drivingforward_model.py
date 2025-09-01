@@ -15,6 +15,7 @@ from .losses import MultiCamLoss, SingleCamLoss
 
 from .gaussian import GaussianNetwork, depth2pc, pts2render, focal2fov, getProjectionMatrix, getWorld2View2, rotate_sh
 from einops import rearrange
+from utils.visualize import show_data
 
 _NO_DEVICE_KEYS = ['idx', 'dataset_idx', 'sensor_name', 'filename', 'token']
 

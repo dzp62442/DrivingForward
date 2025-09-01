@@ -109,6 +109,10 @@ class DrivingForwardTrainer:
                 if self.train_target == 'global_iter' and self.step % 10000 == 0:
                     model.save_model(self.epoch, self.step)
                     print(f'Save model at epoch {self.epoch} at step {self.step} !')
+
+                # 若以达成若干迭代次数为训练目标，达成后直接退出
+                if self.train_target == 'global_iter' and self.step > self.num_global_iters:
+                    break
                 
                 if self.logger.is_checkpoint(self.step):
                     self.validate(model)
