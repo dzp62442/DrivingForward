@@ -93,7 +93,7 @@ load:
   load_dir: path to weights directory
   
 logging:
-  early_phase: 5000
+  early_phase: 10000
   log_frequency: 1000
   late_log_frequency: 5000
   save_frequency: 1

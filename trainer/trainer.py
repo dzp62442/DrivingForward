@@ -105,17 +105,16 @@ class DrivingForwardTrainer:
             if self.rank == 0: 
                 self.logger.update('train', self.epoch, self.world_size, batch_idx, self.step, start_time, before_op_time, inputs, outputs, losses)
 
-                # 若以达成若干迭代次数为训练目标，每 10k 次迭代保存一次模型
-                if self.train_target == 'global_iter' and self.step % 10000 == 0:
-                    model.save_model(self.epoch, self.step)
-                    print(f'Save model at epoch {self.epoch} at step {self.step} !')
-
                 # 若以达成若干迭代次数为训练目标，达成后直接退出
                 if self.train_target == 'global_iter' and self.step > self.num_global_iters:
                     break
                 
+                # 日志记录：前期记录频率高，后期记录频率低
                 if self.logger.is_checkpoint(self.step):
                     self.validate(model)
+                    if self.train_target == 'global_iter':  # 若以达成若干迭代次数为训练目标，每次记录日志时保存模型
+                        model.save_model(self.epoch, self.step)
+                        print(f'Save model at epoch {self.epoch} at step {self.step} !')
 
             self.step += 1
             pbar.update(1)
@@ -139,7 +138,7 @@ class DrivingForwardTrainer:
         inputs = next(val_iter)
         outputs, _ = model.process_batch(inputs, self.rank)
             
-        psnr, ssim, lpips= self.compute_reconstruction_metrics(inputs, outputs)
+        psnr, ssim, lpips= self.compute_reconstruction_metrics(inputs, outputs, self.step)
 
         avg_reconstruction_metric['psnr'] += psnr   
         avg_reconstruction_metric['ssim'] += ssim
@@ -331,7 +330,7 @@ class DrivingForwardTrainer:
         return rearrange(image, "c h w -> h w c").cpu().numpy()
 
     @torch.no_grad()
-    def compute_reconstruction_metrics(self, inputs, outputs):
+    def compute_reconstruction_metrics(self, inputs, outputs, step=100000):
         """
         This function computes reconstruction metrics.
         """
@@ -370,7 +369,7 @@ class DrivingForwardTrainer:
         
         if self.save_plys:
             assert self.eval_batch_size == 1
-            self.save_ply(outputs, Path(self.save_path) / inputs['token'][0] / "driving_forward.ply")
+            self.save_ply(outputs, Path(self.save_path) / inputs['token'][0] / f"driving_forward_{step}.ply")
         
         psnr /= (self.num_cams * len(frame_ids))
         ssim /= (self.num_cams * len(frame_ids))
