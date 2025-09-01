@@ -40,6 +40,8 @@ def construct_dataset(cfg, mode, **kwargs):
                 split = 'eval_MF'
             elif cfg['model']['novel_view_mode'] == 'SF':
                 split = 'eval_SF'
+            elif cfg['model']['novel_view_mode'] == 'OS':
+                split = 'eval_OS'
             else:
                 raise ValueError('Unknown novel view mode: ' + cfg['model']['novel_view_mode'])
         dataset = NuScenesdataset(
@@ -55,6 +57,8 @@ def construct_dataset(cfg, mode, **kwargs):
                 split = 'eval_MF'
             elif cfg['model']['novel_view_mode'] == 'SF':
                 split = 'eval_SF'
+            elif cfg['model']['novel_view_mode'] == 'OS':
+                split = 'eval_OS'
             else:
                 raise ValueError('Unknown novel view mode: ' + cfg['model']['novel_view_mode'])
         dataset = OmnisceneDataset(

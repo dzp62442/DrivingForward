@@ -113,6 +113,15 @@ class MultiCamLoss(SingleCamLoss):
                 l2_loss = ((pred - gt)**2).mean()
                 gaussian_loss += 1 * l2_loss + 0.05 * lpips_loss
             return gaussian_loss / 2
+        elif self.novel_view_mode == 'OS':
+            gaussian_loss = 0.0 
+            for frame_id in self.frame_ids:
+                pred = target_view[('gaussian_color', frame_id, scale)]
+                gt = inputs['color', frame_id, 0][:,cam, ...]        
+                lpips_loss = self.lpips(pred, gt, normalize=True).mean()
+                l2_loss = ((pred - gt)**2).mean()
+                gaussian_loss += 1 * l2_loss + 0.05 * lpips_loss
+            return gaussian_loss / len(self.frame_ids)
 
 
     def forward(self, inputs, outputs, cam):        

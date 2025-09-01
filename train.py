@@ -13,7 +13,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description='training script')
     parser.add_argument('--config_file', default ='./configs/nuscenes/main.yaml', type=str, help='config yaml file')
     parser.add_argument('--weight_path', default=None, type=str, help='weight path')  # 断点续训
-    parser.add_argument('--novel_view_mode', default='MF', type=str, help='MF of SF')
+    parser.add_argument('--novel_view_mode', default='OS', type=str, help='MF or SF or OS')
     args = parser.parse_args()
     return args
 

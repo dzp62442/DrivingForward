@@ -2,13 +2,13 @@
 
 * 训练
 ```shell
-python -W ignore train.py --config_file ./configs/nuscenes/comp_svfgs.yaml --novel_view_mode SF
-python -W ignore train.py --config_file ./configs/nuscenes/comp_svfgs.yaml --novel_view_mode SF --weight_path ./results/main/models/weights_0_n  # 断点续训
+python -W ignore train.py --config_file ./configs/nuscenes/comp_svfgs.yaml --novel_view_mode OS
+python -W ignore train.py --config_file ./configs/nuscenes/comp_svfgs.yaml --novel_view_mode OS --weight_path ./results/comp_svfgs/models/weights_0_n  # 断点续训
 ```
 
 * 推理
 ```shell
-python -W ignore eval.py --config_file ./configs/nuscenes/comp_svfgs.yaml --weight_path ./results/main/models/weights_0_100000 --novel_view_mode SF
+python -W ignore eval.py --config_file ./configs/nuscenes/comp_svfgs.yaml --weight_path ./results/comp_svfgs/models/weights_0_100000 --novel_view_mode OS
 ```
 
 ------

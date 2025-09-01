@@ -190,6 +190,8 @@ class Logger:
                     frame_id = 1
                 elif self.novel_view_mode == 'MF':
                     frame_id = 0
+                elif self.novel_view_mode == 'OS':
+                    frame_id = 0
                 else:
                     raise ValueError(f'Novel view mode {self.novel_view_mode} not supported.')
                 plot_norm_tb(writer, step, target_view[('gaussian_color', frame_id, scale)], set_tb_title('cam', cam_id, f'gaussian_pred_frame_{frame_id}'))

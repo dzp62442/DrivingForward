@@ -205,6 +205,7 @@ class DrivingForwardModel(BaseModel):
                 outputs[('cam', cam)].update({('cam_T_cam', 0, -1): inputs[('cam_T_cam', 0, -1)][:, cam, ...]}) 
             elif self.mode == 'train':
                 outputs[('cam', cam)].update(pose_pred[('cam', cam)])                
+            outputs[('cam', cam)].update({('cam_T_cam', 0, 0): inputs[('cam_T_cam', 0, 0)][:, cam, ...]})
             outputs[('cam', cam)].update(depth_feats[('cam', cam)])
             
         self.compute_depth_maps(inputs, outputs)
@@ -362,6 +363,56 @@ class DrivingForwardModel(BaseModel):
                 outputs[('cam', cam)][('world_view_transform', frame_id, 0)] = torch.cat(world_view_transform_list, dim=0)
                 outputs[('cam', cam)][('full_proj_transform', frame_id, 0)] = torch.cat(full_proj_transform_list, dim=0)
                 outputs[('cam', cam)][('camera_center', frame_id, 0)] = torch.cat(camera_center_list, dim=0)
+
+        elif self.novel_view_mode == 'OS':
+            frame_id = 0
+            outputs[('cam', cam)][('e2c_extr', frame_id, 0)] = inputs['extrinsics_inv'][:, cam, ...]
+            outputs[('cam', cam)][('c2e_extr', frame_id, 0)] = inputs['extrinsics'][:, cam, ...]
+            outputs[('cam', cam)][('xyz', frame_id, 0)] = depth2pc(outputs[('cam', cam)][('depth', frame_id, 0)], outputs[('cam', cam)][('e2c_extr', frame_id, 0)], inputs[('K', 0)][:, cam, ...])
+            valid = outputs[('cam', cam)][('depth', frame_id, 0)] != 0.0
+            outputs[('cam', cam)][('pts_valid', frame_id, 0)] = valid.view(bs, -1)
+            rot_maps, scale_maps, opacity_maps, sh_maps = \
+                self.gs_net(inputs[('color', frame_id, 0)][:, cam, ...], outputs[('cam', cam)][('depth', frame_id, 0)], outputs[('cam', cam)][('img_feat', frame_id, 0)])
+            c2w_rotations = rearrange(outputs[('cam', cam)][('c2e_extr', frame_id, 0)][..., :3, :3], "k i j -> k () () () i j")
+            sh_maps = rotate_sh(sh_maps, c2w_rotations[..., None, :, :])
+            outputs[('cam', cam)][('rot_maps', frame_id, 0)] = rot_maps
+            outputs[('cam', cam)][('scale_maps', frame_id, 0)] = scale_maps
+            outputs[('cam', cam)][('opacity_maps', frame_id, 0)] = opacity_maps
+            outputs[('cam', cam)][('sh_maps', frame_id, 0)] = sh_maps
+
+            # novel view
+            for frame_id in self.frame_ids:
+                outputs[('cam', cam)][('e2c_extr', frame_id, 0)] = \
+                    torch.matmul(outputs[('cam', cam)][('cam_T_cam', 0, frame_id)], inputs['extrinsics_inv'][:, cam, ...])
+                outputs[('cam', cam)][('c2e_extr', frame_id, 0)] = \
+                    torch.matmul(inputs['extrinsics'][:, cam, ...], torch.inverse(outputs[('cam', cam)][('cam_T_cam', 0, frame_id)]))
+                
+                FovX_list = []
+                FovY_list = []
+                world_view_transform_list = []
+                full_proj_transform_list = []
+                camera_center_list = []
+                for i in range(bs):
+                    intr = inputs[('K', 0)][:, cam, ...][i,:]
+                    extr = inputs['extrinsics_inv'][:, cam, ...][i,:]
+                    T_i = outputs[('cam', cam)][('cam_T_cam', 0, frame_id)][i,:]
+                    FovX = focal2fov(intr[0, 0], width)
+                    FovY = focal2fov(intr[1, 1], height)
+                    projection_matrix = getProjectionMatrix(znear=znear, zfar=zfar, K=intr, h=height, w=width).transpose(0, 1).cuda()
+                    world_view_transform = torch.matmul(T_i, torch.tensor(extr).cuda()).transpose(0, 1)
+                    # full_proj_transform: (E^T K^T) = (K E)^T
+                    full_proj_transform = (world_view_transform.unsqueeze(0).bmm(projection_matrix.unsqueeze(0))).squeeze(0)
+                    camera_center = world_view_transform.inverse()[3, :3] 
+                    FovX_list.append(FovX)
+                    FovY_list.append(FovY)
+                    world_view_transform_list.append(world_view_transform.unsqueeze(0))
+                    full_proj_transform_list.append(full_proj_transform.unsqueeze(0))
+                    camera_center_list.append(camera_center.unsqueeze(0))
+                outputs[('cam', cam)][('FovX', frame_id, 0)] = torch.tensor(FovX_list).cuda()
+                outputs[('cam', cam)][('FovY', frame_id, 0)] = torch.tensor(FovY_list).cuda()
+                outputs[('cam', cam)][('world_view_transform', frame_id, 0)] = torch.cat(world_view_transform_list, dim=0)
+                outputs[('cam', cam)][('full_proj_transform', frame_id, 0)] = torch.cat(full_proj_transform_list, dim=0)
+                outputs[('cam', cam)][('camera_center', frame_id, 0)] = torch.cat(camera_center_list, dim=0)
     
     def compute_losses(self, inputs, outputs):
         """
@@ -423,4 +474,15 @@ class DrivingForwardModel(BaseModel):
                                novel_frame_id=novel_frame_id, 
                                bg_color=[1.0, 1.0, 1.0],
                                mode=self.novel_view_mode)
+        elif self.novel_view_mode == 'OS':
+            for novel_frame_id in self.frame_ids:
+                outputs[('cam', cam)][('gaussian_color', novel_frame_id, 0)] = \
+                    pts2render(inputs=inputs, 
+                               outputs=outputs, 
+                               cam_num=self.num_cams, 
+                               novel_cam=cam,
+                               novel_frame_id=novel_frame_id, 
+                               bg_color=[1.0, 1.0, 1.0],
+                               mode=self.novel_view_mode)
+
 

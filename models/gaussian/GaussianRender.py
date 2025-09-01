@@ -22,7 +22,7 @@ def pts2render(inputs, outputs, cam_num, novel_cam, novel_frame_id, bg_color, mo
         scale_i_valid = []
         opacity_i_valid = []
         sh_i_valid = []
-        if mode == 'SF':
+        if mode == 'SF' or mode == 'OS':
             frame_id = 0
             for cam in range(cam_num):
                 valid_i = outputs[('cam', cam)][('pts_valid', frame_id, 0)][i, :]

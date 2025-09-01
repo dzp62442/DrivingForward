@@ -4,8 +4,8 @@ ddp:
   gpus: [0]
   
 model:
-  # mode: 'MF' or 'SF'
-  novel_view_mode: 'SF'
+  # mode: 'MF' or 'SF' or 'OS'
+  novel_view_mode: 'OS'
 
   num_layers: 18
   weights_init: True

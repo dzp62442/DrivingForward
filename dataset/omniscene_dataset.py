@@ -12,7 +12,7 @@ from nuscenes.nuscenes import NuScenes
 from pyquaternion import Quaternion
 
 from .data_util import img_loader, mask_loader_scene, align_dataset, transform_mask_sample
-
+from utils.visualize import show_data
 
 def is_numpy(data):
     """Checks if data is a numpy array."""
@@ -129,7 +129,7 @@ class OmnisceneDataset(Dataset):
         if split == "train":
             #for training
             self.bin_tokens = json.load(open(osp.join(self.path, self.version, "bins_train_3.2m.json")))["bins"]
-        elif split == "eval_SF":
+        elif split == "eval_SF" or split == "eval_OS" or split == "eval_MF":
             # for evaluation
             self.bin_tokens = json.load(open(osp.join(self.path, self.version, "bins_val_3.2m.json")))["bins"]
             self.bin_tokens = self.bin_tokens[0::14][:2048]  # 每隔 14 个取一个，取 2048 个
@@ -205,8 +205,8 @@ class OmnisceneDataset(Dataset):
         with open(osp.join(self.path, self.version, "bin_infos_3.2m", bin_token + ".pkl"), "rb") as f:
             bin_info = pkl.load(f)
         sensor_info_center = {sensor: bin_info["sensor_info"][sensor][0] for sensor in self.cameras + ["LIDAR_TOP"]}
-        sensor_info_fwd = {sensor: bin_info["sensor_info"][sensor][1] for sensor in self.cameras + ["LIDAR_TOP"]}
-        sensor_info_bwd = {sensor: bin_info["sensor_info"][sensor][2] for sensor in self.cameras + ["LIDAR_TOP"]}
+        sensor_info_bwd = {sensor: bin_info["sensor_info"][sensor][1] for sensor in self.cameras + ["LIDAR_TOP"]}
+        sensor_info_fwd = {sensor: bin_info["sensor_info"][sensor][2] for sensor in self.cameras + ["LIDAR_TOP"]}
         
         sample = []
         contexts = []
@@ -271,5 +271,9 @@ class OmnisceneDataset(Dataset):
         # stack and align dataset for our trainer
         sample = stack_sample(sample)
         sample = align_dataset(sample, self.scales, contexts)
+
+        # 添加 ('cam_T_cam', 0, 0) 到 sample，以使用当前时刻图像进行监督和评估
+        sample[('cam_T_cam', 0, 0)] = np.expand_dims(np.eye(4), 0).repeat(self.num_cameras, axis=0)
+
         return sample
                 

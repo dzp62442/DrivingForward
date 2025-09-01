@@ -216,7 +216,7 @@ class DrivingForwardTrainer:
             scale_i_valid = []
             opacity_i_valid = []
             sh_i_valid = []
-            if self.novel_view_mode == 'SF':
+            if self.novel_view_mode == 'SF' or self.novel_view_mode == 'OS':
                 for frame_id in [0]:
                     for cam in range(self.num_cams):
                         valid_i = outputs[('cam', cam)][('pts_valid', frame_id, 0)][i, :]
@@ -339,36 +339,43 @@ class DrivingForwardTrainer:
         ssim = 0.0
         lpips = 0.0
         if self.novel_view_mode == 'SF':
-            frame_id = 1
+            frame_ids = [1]
         elif self.novel_view_mode == 'MF':
-            frame_id = 0
+            frame_ids = [0]
+        elif self.novel_view_mode == 'OS':
+            frame_ids = [0, -1, 1]
         else:
             raise ValueError(f"Invalid novel view mode: {self.novel_view_mode}")
         for cam in range(self.num_cams):
-            rgb_gt = inputs[('color', frame_id, 0)][:, cam, ...]
-            image = outputs[('cam', cam)][('gaussian_color', frame_id, 0)]
-            psnr += self.compute_psnr(rgb_gt, image).mean()
-            ssim += self.compute_ssim(rgb_gt, image).mean()
-            lpips += self.compute_lpips(rgb_gt, image).mean()
-            if self.save_images:
-                assert self.eval_batch_size == 1
-                if self.novel_view_mode == 'SF':
-                    self.save_image(image, Path(self.save_path) / inputs['token'][0] / f"{cam}.png")
-                    self.save_image(rgb_gt, Path(self.save_path) / inputs['token'][0] / f"{cam}_gt.png")
-                    self.save_image(inputs[('color', 0, 0)][:, cam, ...], Path(self.save_path) / inputs['token'][0] / f"{cam}_0_gt.png")
-                elif self.novel_view_mode == 'MF':
-                    self.save_image(image, Path(self.save_path) / inputs['token'][0] / f"{cam}.png")
-                    self.save_image(rgb_gt, Path(self.save_path) / inputs['token'][0] / f"{cam}_gt.png")
-                    self.save_image(inputs[('color', -1, 0)][:, cam, ...], Path(self.save_path) / inputs['token'][0] / f"{cam}_prev_gt.png")
-                    self.save_image(inputs[('color', 1, 0)][:, cam, ...], Path(self.save_path) / inputs['token'][0] / f"{cam}_next_gt.png")
+            for frame_id in frame_ids:
+                rgb_gt = inputs[('color', frame_id, 0)][:, cam, ...]
+                image = outputs[('cam', cam)][('gaussian_color', frame_id, 0)]
+                psnr += self.compute_psnr(rgb_gt, image).mean()
+                ssim += self.compute_ssim(rgb_gt, image).mean()
+                lpips += self.compute_lpips(rgb_gt, image).mean()
+                if self.save_images:
+                    assert self.eval_batch_size == 1
+                    if self.novel_view_mode == 'SF':
+                        self.save_image(image, Path(self.save_path) / inputs['token'][0] / f"{cam}.png")
+                        self.save_image(rgb_gt, Path(self.save_path) / inputs['token'][0] / f"{cam}_gt.png")
+                        self.save_image(inputs[('color', 0, 0)][:, cam, ...], Path(self.save_path) / inputs['token'][0] / f"{cam}_0_gt.png")
+                    elif self.novel_view_mode == 'MF':
+                        self.save_image(image, Path(self.save_path) / inputs['token'][0] / f"{cam}.png")
+                        self.save_image(rgb_gt, Path(self.save_path) / inputs['token'][0] / f"{cam}_gt.png")
+                        self.save_image(inputs[('color', -1, 0)][:, cam, ...], Path(self.save_path) / inputs['token'][0] / f"{cam}_prev_gt.png")
+                        self.save_image(inputs[('color', 1, 0)][:, cam, ...], Path(self.save_path) / inputs['token'][0] / f"{cam}_next_gt.png")
+                    elif self.novel_view_mode == 'OS':
+                        self.save_image(image, Path(self.save_path) / inputs['token'][0] / f"{cam}_{frame_id}.png")
+                        self.save_image(rgb_gt, Path(self.save_path) / inputs['token'][0] / f"{cam}_{frame_id}_gt.png")
+                        self.save_image(inputs[('color', 0, 0)][:, cam, ...], Path(self.save_path) / inputs['token'][0] / f"{cam}_{frame_id}_0_gt.png")
         
         if self.save_plys:
             assert self.eval_batch_size == 1
             self.save_ply(outputs, Path(self.save_path) / inputs['token'][0] / "driving_forward.ply")
         
-        psnr /= self.num_cams
-        ssim /= self.num_cams
-        lpips /= self.num_cams
+        psnr /= (self.num_cams * len(frame_ids))
+        ssim /= (self.num_cams * len(frame_ids))
+        lpips /= (self.num_cams * len(frame_ids))
         return psnr, ssim, lpips
     
     @torch.no_grad()
