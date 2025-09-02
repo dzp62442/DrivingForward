@@ -6,12 +6,31 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 import PIL.Image as pil
-
+import logging
 from tensorboardX import SummaryWriter
 
 from .visualize import colormap
 from .misc import pretty_ts, cal_depth_error
 
+
+def create_file_logger(log_file=None, is_main_process=False, log_level=logging.INFO):
+    """使用 logging 库进行日志记录，主要用于保存日志到文件"""
+    logger = logging.getLogger(__name__)
+    logger.setLevel(log_level)
+    formatter = logging.Formatter('%(asctime)s  %(levelname)5s  %(message)s')
+    console = logging.StreamHandler()
+    console.setLevel(log_level)
+    console.setFormatter(formatter)
+    logger.addHandler(console)
+    if log_file is not None:
+        file_handler = logging.FileHandler(filename=log_file)
+        file_handler.setLevel(log_level)
+        file_handler.setFormatter(formatter)
+        logger.addHandler(file_handler)
+
+    logger.propagate = False
+    return logger
+    
 
 def set_tb_title(*args):
     """
