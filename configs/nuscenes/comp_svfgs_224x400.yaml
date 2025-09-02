@@ -40,8 +40,8 @@ training:
   num_global_iters: 100000
 
   # basic
-  height: 112
-  width: 200
+  height: 224
+  width: 400
   scales: [0] 
   frame_ids: [0, -1, 1]
   
@@ -85,7 +85,7 @@ eval:
   eval_visualize: True
   save_images: True
   save_plys: True
-  save_path: './results/images'
+  save_path: './results/comp_svfgs_224x400/images'
   
 load:
   pretrain: False

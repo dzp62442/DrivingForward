@@ -2,13 +2,14 @@
 
 * 训练
 ```shell
-python -W ignore train.py --config_file ./configs/nuscenes/comp_svfgs.yaml --novel_view_mode OS
-python -W ignore train.py --config_file ./configs/nuscenes/comp_svfgs.yaml --novel_view_mode OS --weight_path ./results/comp_svfgs/models/weights_0_n  # 断点续训
+# 拷贝 weights_SF 到 results/comp_svfgs/models/ 目录下，命名为 weights_0_0，作为训练起点
+python -W ignore train.py --config_file ./configs/nuscenes/comp_svfgs_112x200.yaml --novel_view_mode OS --weight_path ./results/comp_svfgs_112x200/models/weights_0_0
+python -W ignore train.py --config_file ./configs/nuscenes/comp_svfgs_112x200.yaml --novel_view_mode OS --weight_path ./results/comp_svfgs_112x200/models/weights_0_n  # 断点续训
 ```
 
 * 推理
 ```shell
-python -W ignore eval.py --config_file ./configs/nuscenes/comp_svfgs.yaml --weight_path ./results/comp_svfgs/models/weights_0_100000 --novel_view_mode OS
+python -W ignore eval.py --config_file ./configs/nuscenes/comp_svfgs_112x200.yaml --weight_path ./results/comp_svfgs_112x200/models/weights_0_100000 --novel_view_mode OS
 ```
 
 ------
