@@ -1,7 +1,7 @@
-from .logger import Logger
+from .logger import Logger, create_file_logger
 from .misc import get_config
 
-__all__ = ['Logger', 'get_config']
+__all__ = ['Logger', 'get_config', 'create_file_logger']
 
 
 import sys

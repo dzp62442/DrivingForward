@@ -1,3 +1,4 @@
+import os
 import time
 from collections import defaultdict
 from tqdm import tqdm
@@ -6,7 +7,7 @@ import torch
 import torch.distributed as dist
 from torch import Tensor
 
-from utils import Logger
+from utils import Logger, create_file_logger
 
 from lpips import LPIPS
 from jaxtyping import Float, UInt8
@@ -159,6 +160,12 @@ class DrivingForwardTrainer:
         """
         eval_dataloader = model.eval_dataloader()
 
+        # 创建日志文件记录器
+        timestamp = time.strftime('%Y%m%d_%H%M%S', time.localtime())
+        log_file = os.path.join(self.save_path, f'{timestamp}.log')
+        os.makedirs(os.path.dirname(log_file), exist_ok=True)
+        file_logger = create_file_logger(log_file=log_file, is_main_process=True)
+
         # load model
         model.load_weights()
         model.set_eval()
@@ -178,17 +185,16 @@ class DrivingForwardTrainer:
             avg_reconstruction_metric['lpips'] += lpips
             count += 1
 
-            process.set_description(f"PSNR: {psnr:.4f}, SSIM: {ssim:.4f}, LPIPS: {lpips:.4f}")
-
-            print(f"\n{inputs['token'][0]}")
+            file_logger.info(f"{inputs['token'][0]}")
+            file_logger.info(f"PSNR: {psnr:.4f}, SSIM: {ssim:.4f}, LPIPS: {lpips:.4f}")
             print(f"avg PSNR: {avg_reconstruction_metric['psnr']/count:.4f}, avg SSIM: {avg_reconstruction_metric['ssim']/count:.4f}, avg LPIPS: {avg_reconstruction_metric['lpips']/count:.4f}")
             
         avg_reconstruction_metric['psnr'] /= len(eval_dataloader)
         avg_reconstruction_metric['ssim'] /= len(eval_dataloader)
         avg_reconstruction_metric['lpips'] /= len(eval_dataloader)
 
-        print('Evaluation reconstruction result...\n')
-        self.logger.print_perf(avg_reconstruction_metric, 'reconstruction')
+        file_logger.info('Evaluation reconstruction result...')
+        file_logger.info(f"Total avg PSNR: {avg_reconstruction_metric['psnr']:.4f}, SSIM: {avg_reconstruction_metric['ssim']:.4f}, LPIPS: {avg_reconstruction_metric['lpips']:.4f}")
 
     def save_image(
         self,
