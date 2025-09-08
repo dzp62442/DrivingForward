@@ -24,7 +24,7 @@ class GaussianNetwork(nn.Module):
         for degree in range(1, self.sh_degree + 1):
             self.sh_mask[degree**2 : (degree + 1) ** 2] = 0.1 * 0.25**degree
 
-        self.depth_encoder = UnetExtractor(in_channel=depth_dim, encoder_dim=self.depth_dims)
+        self.depth_encoder = UnetExtractor(in_channel=depth_dim, encoder_dim=self.depth_dims)  # 将单通道深度图编码为多尺度特征
 
         self.decoder3 = nn.Sequential(
             ResidualBlock(self.rgb_dims[2]+self.depth_dims[2], self.decoder_dims[2], norm_fn=norm_fn),
@@ -77,7 +77,7 @@ class GaussianNetwork(nn.Module):
         # depth_feat3: [4, 96, 44, 80]
         depth_feat1, depth_feat2, depth_feat3 = self.depth_encoder(depth)
 
-        feat3 = torch.concat([img_feat3, depth_feat3], dim=1)
+        feat3 = torch.concat([img_feat3, depth_feat3], dim=1)  # 在通道维度上拼接
         feat2 = torch.concat([img_feat2, depth_feat2], dim=1)
         feat1 = torch.concat([img_feat1, depth_feat1], dim=1)
 
@@ -86,8 +86,8 @@ class GaussianNetwork(nn.Module):
         up2 = self.decoder2(torch.cat([up3, feat2], dim=1))
         up2 = self.up(up2)
         up1 = self.decoder1(torch.cat([up2, feat1], dim=1))
-
         up1 = self.up(up1)
+
         out = torch.cat([up1, img, depth], dim=1)
         out = self.out_conv(out)
         out = self.out_relu(out)
