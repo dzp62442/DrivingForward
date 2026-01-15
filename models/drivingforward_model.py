@@ -180,7 +180,12 @@ class DrivingForwardModel(BaseModel):
                 else:
                     inputs[key] = ipt.float().to(rank)   
 
-        outputs = self.estimate(inputs)
+        benchmarker = self._get_benchmarker()
+        if benchmarker is not None:
+            with benchmarker.time("forward_estimate"):
+                outputs = self.estimate(inputs)
+        else:
+            outputs = self.estimate(inputs)
         losses = self.compute_losses(inputs, outputs)
         return outputs, losses  
 
@@ -210,6 +215,11 @@ class DrivingForwardModel(BaseModel):
             
         self.compute_depth_maps(inputs, outputs)
         return outputs
+
+    def _get_benchmarker(self):
+        if self.mode == 'eval':
+            return getattr(self, "benchmarker", None)
+        return None
 
     def predict_pose(self, inputs):      
         """
@@ -421,18 +431,29 @@ class DrivingForwardModel(BaseModel):
         losses = 0
         loss_fn = defaultdict(list)
         loss_mean = defaultdict(float)
+        benchmarker = self._get_benchmarker()
 
         # compute gaussian data
         if self.gaussian:
             self.gs_net = self.models['gs_net']
-            for cam in range(self.num_cams):
-                self.get_gaussian_data(inputs, outputs, cam)
+            if benchmarker is not None:
+                with benchmarker.time("forward_gaussian"):
+                    for cam in range(self.num_cams):
+                        self.get_gaussian_data(inputs, outputs, cam)
+            else:
+                for cam in range(self.num_cams):
+                    self.get_gaussian_data(inputs, outputs, cam)
 
         # generate image and compute loss per cameara
         for cam in range(self.num_cams):
             self.pred_cam_imgs(inputs, outputs, cam)
             if self.gaussian:
-                self.pred_gaussian_imgs(inputs, outputs, cam)
+                if benchmarker is not None:
+                    render_calls = self._get_render_calls()
+                    with benchmarker.time("render", num_calls=render_calls):
+                        self.pred_gaussian_imgs(inputs, outputs, cam)
+                else:
+                    self.pred_gaussian_imgs(inputs, outputs, cam)
             cam_loss, loss_dict = self.losses(inputs, outputs, cam)
             
             losses += cam_loss  
@@ -446,6 +467,15 @@ class DrivingForwardModel(BaseModel):
 
         loss_mean['total_loss'] = losses        
         return loss_mean
+
+    def _get_render_calls(self):
+        if self.novel_view_mode == 'MF':
+            return 1
+        if self.novel_view_mode == 'SF':
+            return len(self.frame_ids[1:])
+        if self.novel_view_mode == 'OS':
+            return len(self.frame_ids)
+        return 1
 
     def pred_cam_imgs(self, inputs, outputs, cam):
         """
@@ -484,5 +514,4 @@ class DrivingForwardModel(BaseModel):
                                novel_frame_id=novel_frame_id, 
                                bg_color=[1.0, 1.0, 1.0],
                                mode=self.novel_view_mode)
-
 

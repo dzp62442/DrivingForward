@@ -6,6 +6,7 @@ torch.backends.cudnn.benchmark = False
 torch.backends.cuda.matmul.allow_tf32 = False
     
 import utils
+from utils.param_count import build_param_table
 from models import DrivingForwardModel
 from trainer import DrivingForwardTrainer
 
@@ -21,6 +22,8 @@ def parse_args():
 def test(cfg):
     print("Evaluating reconstruction")
     model = DrivingForwardModel(cfg, 0)
+    for line in build_param_table(model):
+        print(line)
     trainer = DrivingForwardTrainer(cfg, 0, use_tb = False)
     trainer.evaluate(model)
 

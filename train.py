@@ -6,6 +6,7 @@ torch.backends.cuda.matmul.allow_tf32 = False
 torch.manual_seed(0)
 
 import utils
+from utils.param_count import build_param_table
 from models import DrivingForwardModel
 from trainer import DrivingForwardTrainer
 
@@ -19,6 +20,8 @@ def parse_args():
 
 def train(cfg):    
     model = DrivingForwardModel(cfg, 0)
+    for line in build_param_table(model):
+        print(line)
     trainer = DrivingForwardTrainer(cfg, 0)
     trainer.learn(model)
 

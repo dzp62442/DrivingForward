@@ -8,6 +8,7 @@ import torch.distributed as dist
 from torch import Tensor
 
 from utils import Logger, create_file_logger
+from utils.benchmarker import Benchmarker
 
 from lpips import LPIPS
 from jaxtyping import Float, UInt8
@@ -159,6 +160,7 @@ class DrivingForwardTrainer:
         This function evaluates models on validation dataset of samples with context.
         """
         eval_dataloader = model.eval_dataloader()
+        model.benchmarker = Benchmarker()
 
         # 创建日志文件记录器
         timestamp = time.strftime('%Y%m%d_%H%M%S', time.localtime())
@@ -195,6 +197,25 @@ class DrivingForwardTrainer:
 
         file_logger.info('Evaluation reconstruction result...')
         file_logger.info(f"Total avg PSNR: {avg_reconstruction_metric['psnr']:.4f}, SSIM: {avg_reconstruction_metric['ssim']:.4f}, LPIPS: {avg_reconstruction_metric['lpips']:.4f}")
+
+        benchmarker = getattr(model, "benchmarker", None)
+        if benchmarker is not None:
+            forward_est_times = benchmarker.execution_times.get("forward_estimate", [])
+            forward_gauss_times = benchmarker.execution_times.get("forward_gaussian", [])
+            forward_avg = (np.mean(forward_est_times) if forward_est_times else 0.0) + (
+                np.mean(forward_gauss_times) if forward_gauss_times else 0.0
+            )
+            forward_calls = max(len(forward_est_times), len(forward_gauss_times))
+            if forward_calls:
+                file_logger.info(f"forward: {forward_calls} calls, avg. {forward_avg:.6f} seconds per call")
+            else:
+                file_logger.info("forward: no timing data")
+
+            render_times = benchmarker.execution_times.get("render", [])
+            if render_times:
+                file_logger.info(f"render: {len(render_times)} calls, avg. {np.mean(render_times):.6f} seconds per call")
+            else:
+                file_logger.info("render: no timing data")
 
     def save_image(
         self,

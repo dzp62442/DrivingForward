@@ -27,30 +27,63 @@ def _format_param_count(count):
     return text
 
 
+def _unwrap_model(model):
+    if hasattr(model, "module"):
+        return model.module
+    return model
+
+
+def _iter_named_children(model):
+    if hasattr(model, "named_children"):
+        return list(model.named_children())
+    if hasattr(model, "models") and isinstance(model.models, dict):
+        return list(model.models.items())
+    if isinstance(model, dict):
+        return list(model.items())
+    return []
+
+
+def _get_module_params(module):
+    if hasattr(module, "parameters"):
+        return list(module.parameters())
+    return []
+
+
 def build_param_table(model):
     """自动统计一级模块与 others 的参数量表。"""
     rows = []
     module_params_ids = set()
-    children = list(model.named_children())
+    model = _unwrap_model(model)
+    children = _iter_named_children(model)
     for name, module in children:
-        params = list(module.parameters())
+        params = _get_module_params(module)
         for p in params:
             module_params_ids.add(id(p))
         total = _count_params_from_list(params, trainable_only=None)
         trainable = _count_params_from_list(params, trainable_only=True)
         frozen = total - trainable
+        type_name = module.__class__.__name__ if hasattr(module, "__class__") else type(module).__name__
+        if hasattr(module, "training"):
+            mode = "train" if module.training else "eval"
+        else:
+            mode = "n/a"
         rows.append(
             (
                 name,
-                module.__class__.__name__,
+                type_name,
                 _format_param_count(trainable),
                 _format_param_count(frozen),
                 _format_param_count(total),
-                "train" if module.training else "eval",
+                mode,
             )
         )
 
-    all_params = list(model.parameters())
+    if hasattr(model, "parameters"):
+        all_params = list(model.parameters())
+    else:
+        all_params = []
+        for _, module in children:
+            all_params.extend(_get_module_params(module))
     other_params = [p for p in all_params if id(p) not in module_params_ids]
     other_total = _count_params_from_list(other_params, trainable_only=None)
     other_trainable = _count_params_from_list(other_params, trainable_only=True)
